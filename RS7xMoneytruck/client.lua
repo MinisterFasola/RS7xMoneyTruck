@@ -7,7 +7,7 @@ local street1 = GetStreetNameFromHashKey(s1)
 local street2 = GetStreetNameFromHashKey(s2)
 local isRobbing = false
 local hasRobbed = false
-
+local finished = false
 
 Citizen.CreateThread(function()
 	while ESX == nil do
@@ -118,14 +118,37 @@ function Timeout(hasRobbed)
     if hasRobbed == true then
         exports['mythic_notify']:DoHudText('error', 'You have grabbed the loot and the truck appears to be empty go lay low for a while' )
        -- TriggerEvent('esx:notification','~g~You have grabbed the loot and the truck appears to be empty go lay low for a while~w~', g)
-        Citizen.Wait(Config.Timeout * 1000)
         hasRobbed = false
         finished = false
+        Citizen.Wait(Config.Timeout * 1000)               --moved down to prevent scripting jammed
     else
         hasRobbed = false
         finished = false
     end
 end
+
+RegisterNetEvent('RS7x:robbingtimer')                       --new timer
+AddEventHandler('RS7x:robbingtimer', function ()
+
+  if isRobbing == true then
+    local timer = Config.Timer
+
+      Citizen.CreateThread(function()
+        while timer > 0 and isRobbing do
+          Citizen.Wait (1000)
+
+           if  timer > 0 then
+                timer = timer -1
+           end
+
+           if timer == 1 then
+              finished = true
+              break
+           end
+        end   
+      end)
+  end
+end)
 
 RobbedPlates = {}
 
@@ -135,26 +158,40 @@ Citizen.CreateThread(function()
     Citizen.Wait(0)
 
     local pos = GetEntityCoords(GetPlayerPed(-1))
-    local vehicle = GetClosestVehicle(pos.x, pos.y, pos.z, 5.001, 0, 70)
+    local truck = GetHashKey('stockade')
+    local vehicle = GetClosestVehicle(pos.x, pos.y, pos.z, 20.000, truck, 70)
     local text = GetOffsetFromEntityInWorldCoords(vehicle, 0.0, -4.25, 0.0)
     local dstCheck = GetDistanceBetweenCoords(pos.x, pos.y, pos.z, GetEntityCoords(vehicle), true)
     local Plate = GetVehicleNumberPlateText(vehicle)
 
     if DoesEntityExist(vehicle) then
-        if GetEntityModel(vehicle) == GetHashKey('stockade') and not isRobbing and not hasRobbed then
+        if GetEntityModel(vehicle) and not isRobbing and not hasRobbed then
             if dstCheck < 5.0 then
                 if IsControlJustReleased(0, 38) then
                     if not RobbedPlates[Plate] then
-                        TriggerServerEvent('RS7x:Itemcheck', 1)
+                        TriggerServerEvent('RS7x:moneytruck')   --to prevent more than 1 player robbing/hacking at the same time with serverside
                     else
                         exports['mythic_notify']:DoHudText('error', 'This truck appears to be empty (already hit)')
                     end
                 end
             end
+          elseif GetEntityModel(vehicle) and isRobbing then
+            if dstCheck > 15.0 then                             -- if robber getting far away from the truck
+              RemoveBlip(Blip)
+              finished = false
+              isRobbing = false
+              pedSpawned = false
+              TriggerServerEvent('RS7x:moneytruck')             -- reset server side
+              TriggerServerEvent('RS7x:robbing_false')          -- to stop payout event in server.lua when went far away
+              Citizen.Wait(Config.Timeout * 1000)                  
+            end
         end
-        if not IsEntityDead(GetPlayerPed(-1)) then
+    else
+        Citizen.Wait(500)
+    end -- i end this line at this point because it cause many bugs when triggered with others entity vehicles
+        if not IsEntityDead(GetPlayerPed(-1)) and isRobbing then
 
-            if pedSpawned == true then
+            if pedSpawned == true and vehicle then                -- to ensure the marker only draw at the back of stockade only
 
                 DrawMarker(27, text.x, text.y, text.z, 0, 0, 0, 0, 0, 0, 1.001, 1.0001, 0.5001, 255, 0, 0, 100, 0, 0, 0, 0)
                 DrawText3Ds(text.x, text.y, text.z, "~r~[E]~w~ To Rob")
@@ -163,8 +200,7 @@ Citizen.CreateThread(function()
                     TriggerEvent('animation:rob')
                     exports['progressBars']:startUI(Config.Timer * 1000, "Grabbing Cash/Items")
                     TriggerServerEvent('RS7x:Payout')
-                    Citizen.Wait(Config.Timer * 1000)
-                    finished = true
+                    TriggerEvent('RS7x:robbingtimer')             --using citizen wait/ wait will jammed the script hence it wouldnt detect if player is dead during robbery thts why im using timer
                 end
 
                 if finished then
@@ -173,23 +209,24 @@ Citizen.CreateThread(function()
                     SetPedAsNoLongerNeeded(guard3)
                     pedSpawned = false
                     isRobbing = false
-                    Timeout(true)
                     RemoveBlip(Blip)
                     finished = false
                     RobbedPlates[Plate] = true
                     TriggerServerEvent('RS7x:UpdatePlates', RobbedPlates, Plate)
+                    TriggerServerEvent('RS7x:moneytruck')                         -- reset server side
+                    TriggerServerEvent('RS7x:robbing_false')                      -- to stop payout event in server.lua when finished
+                    Timeout(true)
                 end
             end
         else
-            Citizen.Wait(Config.Timeout * 1000)
             RemoveBlip(Blip)
             finished = false
             isRobbing = false
             pedSpawned = false
+            TriggerServerEvent('RS7x:moneytruck')                                 -- reset server side
+            TriggerServerEvent('RS7x:robbing_false')                              -- to stop payout event in server.lua when dead
+            Citizen.Wait(Config.Timeout * 1000)
         end
-    else
-        Citizen.Wait(500)
-    end
   end
 end)
 
@@ -233,6 +270,7 @@ function createped()
   TaskCombatPed(guard, GetPlayerPed(-1), 0,16)
   GiveWeaponToPed(guard, GetHashKey("WEAPON_SMG"), 5000, true, true)
   SetPedRelationshipGroupHash( guard, GetHashKey("HATES_PLAYER"))
+  SetPedDropsWeaponsWhenDead(guard,false)                                 --disallow player farm weapon from NPC
 
   --////////////
   --  Guard 2
@@ -248,6 +286,7 @@ function createped()
   TaskCombatPed(guard2, GetPlayerPed(-1), 0,16)
   GiveWeaponToPed(guard2, GetHashKey("WEAPON_SMG"), 5000, true, true)
   SetPedRelationshipGroupHash( guard2, GetHashKey("HATES_PLAYER"))
+  SetPedDropsWeaponsWhenDead(guard2,false)                                --disallow player farm weapon from NPC
 
   --////////////
   --  Guard3
@@ -263,6 +302,7 @@ function createped()
   TaskCombatPed(guard3, GetPlayerPed(-1), 0,16)
   GiveWeaponToPed(guard3, GetHashKey("WEAPON_SMG"), 5000, true, true)
   SetPedRelationshipGroupHash( guard3, GetHashKey("HATES_PLAYER"))
+  SetPedDropsWeaponsWhenDead(guard3,false)                                  --disallow player farm weapon from NPC
 end
 
 RegisterNetEvent('RS7x:startHacking')

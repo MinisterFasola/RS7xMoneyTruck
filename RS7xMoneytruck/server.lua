@@ -1,4 +1,6 @@
 ESX = nil
+local Robbing = false
+local moneytruck = false
 
 TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
 
@@ -19,6 +21,19 @@ function CountCops()
 end
 
 CountCops()
+
+RegisterNetEvent('RS7x:moneytruck')
+AddEventHandler('RS7x:moneytruck', function()
+ 
+    if moneytruck == false then
+        moneytruck = true
+        TriggerEvent('RS7x:Itemcheck', 1)
+    
+    else
+        moneytruck = false
+    end
+
+end)
 
 RegisterNetEvent('RS7x:Itemcheck')
 AddEventHandler('RS7x:Itemcheck', function(amount)
@@ -82,7 +97,6 @@ end
 RegisterNetEvent('RS7x:Payout')
 AddEventHandler('RS7x:Payout', function()
     local xPlayer = ESX.GetPlayerFromId(source)
-    local Robbing = false
     local timer = 0
 
     Robbing = true
@@ -99,5 +113,12 @@ AddEventHandler('RS7x:Payout', function()
             Robbing = false
             break
         end
+    end
+end)
+
+RegisterNetEvent('RS7x:robbing_false')
+AddEventHandler('RS7x:robbing_false', function ()
+    if Robbing == true then
+        Robbing = false
     end
 end)
