@@ -181,7 +181,7 @@ Citizen.CreateThread(function()
               finished = false
               isRobbing = false
               pedSpawned = false
-              TriggerServerEvent('RS7x:moneytruck')             -- reset server side
+              TriggerServerEvent('RS7x:moneytruck_false')       -- reset server side
               TriggerServerEvent('RS7x:robbing_false')          -- to stop payout event in server.lua when went far away
               Citizen.Wait(Config.Timeout * 1000)                  
             end
@@ -213,7 +213,7 @@ Citizen.CreateThread(function()
                     finished = false
                     RobbedPlates[Plate] = true
                     TriggerServerEvent('RS7x:UpdatePlates', RobbedPlates, Plate)
-                    TriggerServerEvent('RS7x:moneytruck')                         -- reset server side
+                    TriggerServerEvent('RS7x:moneytruck_false')                   -- reset server side
                     TriggerServerEvent('RS7x:robbing_false')                      -- to stop payout event in server.lua when finished
                     Timeout(true)
                 end
@@ -223,7 +223,7 @@ Citizen.CreateThread(function()
             finished = false
             isRobbing = false
             pedSpawned = false
-            TriggerServerEvent('RS7x:moneytruck')                                 -- reset server side
+            TriggerServerEvent('RS7x:moneytruck_false')                           -- reset server side
             TriggerServerEvent('RS7x:robbing_false')                              -- to stop payout event in server.lua when dead
             Citizen.Wait(Config.Timeout * 1000)
         end

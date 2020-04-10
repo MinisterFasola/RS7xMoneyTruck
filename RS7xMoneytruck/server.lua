@@ -28,11 +28,16 @@ AddEventHandler('RS7x:moneytruck', function()
     if moneytruck == false then
         moneytruck = true
         TriggerEvent('RS7x:Itemcheck', 1)
-    
-    else
-        moneytruck = false
     end
 
+end)
+
+RegisterNetEvent('RS7x:moneytruck_false')
+AddEventHandler(RS7x:moneytruck_false, function ()
+    
+    if moneytruck == true then
+        moneytruck = false
+    end
 end)
 
 RegisterNetEvent('RS7x:Itemcheck')
