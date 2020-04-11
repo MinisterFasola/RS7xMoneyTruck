@@ -27,13 +27,12 @@ AddEventHandler('RS7x:moneytruck', function()
  
     if moneytruck == false then
         moneytruck = true
-        TriggerEvent('RS7x:Itemcheck', 1)
     end
 
 end)
 
 RegisterNetEvent('RS7x:moneytruck_false')
-AddEventHandler(RS7x:moneytruck_false, function ()
+AddEventHandler('RS7x:moneytruck_false', function ()
     
     if moneytruck == true then
         moneytruck = false
@@ -47,21 +46,23 @@ AddEventHandler('RS7x:Itemcheck', function(amount)
 
     local item = xPlayer.getInventoryItem(Config.Item)
 
-    if isRobbing and item.count > 0 and amount > 0 then
-        CountCops()
-        if CopsConnected >= Config.Copsneeded then
-            --xPlayer.removeInventoryItem("Config.Item", 1)  // uncomment if you want to remove the item on start //
-            TriggerClientEvent('RS7x:startHacking',source,true)
-            TriggerClientEvent('animation:hack', source)
+    if moneytruck then
+        if isRobbing and item.count > 0 and amount > 0 then
+            CountCops()
+            if CopsConnected >= Config.Copsneeded then
+                --xPlayer.removeInventoryItem("Config.Item", 1)  // uncomment if you want to remove the item on start //
+                TriggerClientEvent('RS7x:startHacking',source,true)
+                TriggerClientEvent('animation:hack', source)
+            else
+                isRobbing = false
+                TriggerClientEvent('mythic_notify:client:SendAlert', source, { type = 'error', text = ("Not Enough Police") })
+                --TriggerClientEvent('esx:notification','~r~Not Enough Police', source, r)
+            end
         else
             isRobbing = false
-            TriggerClientEvent('mythic_notify:client:SendAlert', source, { type = 'error', text = ("Not Enough Police") })
-            --TriggerClientEvent('esx:notification','~r~Not Enough Police', source, r)
+            TriggerClientEvent('mythic_notify:client:SendAlert', source, { type = 'error', text = ("You dont have the right tools for this") })
+            --TriggerClientEvent('esx:notification','~r~You dont have the right tools for this', source, r)
         end
-    else
-        isRobbing = false
-        TriggerClientEvent('mythic_notify:client:SendAlert', source, { type = 'error', text = ("You dont have the right tools for this") })
-        --TriggerClientEvent('esx:notification','~r~You dont have the right tools for this', source, r)
     end
 end)
 
@@ -85,9 +86,15 @@ RobbedPlates = {}
 
 RegisterNetEvent('RS7x:UpdatePlates')
 AddEventHandler('RS7x:UpdatePlates', function(UpdatedTable, Plate)
+    local xPlayers = ESX.GetPlayers()
     RobbedPlates = UpdatedTable
-    UpdatedTable[Plate] = true
-    TriggerClientEvent('RS7x:newTable',source , UpdatedTable)
+    for i=1, #xPlayers, 1 do
+        local xPlayer = ESX.GetPlayerFromId(xPlayers[i])
+        if xPlayer ~= nil then
+            UpdatedTable[Plate] = true
+            TriggerClientEvent('RS7x:newTable', xPlayers[i], UpdatedTable)
+        end
+    end
     print('Updated Plates To server')
 end)
 

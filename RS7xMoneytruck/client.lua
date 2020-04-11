@@ -151,31 +151,33 @@ AddEventHandler('RS7x:robbingtimer', function ()
 end)
 
 RobbedPlates = {}
-
+--RobbedPlates[Plates] = false
 Citizen.CreateThread(function()
   while true do
 
     Citizen.Wait(0)
 
-    local pos = GetEntityCoords(GetPlayerPed(-1))
     local truck = GetHashKey('stockade')
-    local vehicle = GetClosestVehicle(pos.x, pos.y, pos.z, 20.000, truck, 70)
+    local pos = GetEntityCoords(GetPlayerPed(-1))
+    local vehicle = GetClosestVehicle(pos.x, pos.y, pos.z, 20.00, truck, 70)
     local text = GetOffsetFromEntityInWorldCoords(vehicle, 0.0, -4.25, 0.0)
     local dstCheck = GetDistanceBetweenCoords(pos.x, pos.y, pos.z, GetEntityCoords(vehicle), true)
     local Plate = GetVehicleNumberPlateText(vehicle)
 
     if DoesEntityExist(vehicle) then
-        if GetEntityModel(vehicle) and not isRobbing and not hasRobbed then
+          if not isRobbing and not hasRobbed then
             if dstCheck < 5.0 then
                 if IsControlJustReleased(0, 38) then
-                    if not RobbedPlates[Plate] then
+--                    if not RobbedPlates[Plate] then
                         TriggerServerEvent('RS7x:moneytruck')   --to prevent more than 1 player robbing/hacking at the same time with serverside
-                    else
-                        exports['mythic_notify']:DoHudText('error', 'This truck appears to be empty (already hit)')
-                    end
+                        Citizen.Wait (100)
+                        TriggerServerEvent('RS7x:Itemcheck', 1)
+--                    else
+--                        exports['mythic_notify']:DoHudText('error', 'This truck appears to be empty (already hit)')
+--                    end
                 end
             end
-          elseif GetEntityModel(vehicle) and isRobbing then
+          elseif isRobbing == true then  
             if dstCheck > 15.0 then                             -- if robber getting far away from the truck
               RemoveBlip(Blip)
               finished = false
@@ -185,48 +187,52 @@ Citizen.CreateThread(function()
               TriggerServerEvent('RS7x:robbing_false')          -- to stop payout event in server.lua when went far away
               Citizen.Wait(Config.Timeout * 1000)                  
             end
-        end
+          end
     else
         Citizen.Wait(500)
     end -- i end this line at this point because it cause many bugs when triggered with others entity vehicles
-        if not IsEntityDead(GetPlayerPed(-1)) and isRobbing then
+        
 
-            if pedSpawned == true and vehicle then                -- to ensure the marker only draw at the back of stockade only
+    if pedSpawned == true and vehicle then                -- to ensure the marker only draw at the back of stockade only
 
-                DrawMarker(27, text.x, text.y, text.z, 0, 0, 0, 0, 0, 0, 1.001, 1.0001, 0.5001, 255, 0, 0, 100, 0, 0, 0, 0)
-                DrawText3Ds(text.x, text.y, text.z, "~r~[E]~w~ To Rob")
+        DrawMarker(27, text.x, text.y, text.z, 0, 0, 0, 0, 0, 0, 1.001, 1.0001, 0.5001, 255, 0, 0, 100, 0, 0, 0, 0)
+        DrawText3Ds(text.x, text.y, text.z, "~r~[E]~w~ To Rob")
 
-                if IsControlJustReleased(0,38) then
-                    TriggerEvent('animation:rob')
-                    exports['progressBars']:startUI(Config.Timer * 1000, "Grabbing Cash/Items")
-                    TriggerServerEvent('RS7x:Payout')
-                    TriggerEvent('RS7x:robbingtimer')             --using citizen wait/ wait will jammed the script hence it wouldnt detect if player is dead during robbery thts why im using timer
-                end
+        if dstCheck < 5.0 then  
+          if IsControlJustReleased(0,38) then
+              TriggerEvent('animation:rob')
+              exports['progressBars']:startUI(Config.Timer * 1000, "Grabbing Cash/Items")
+              TriggerServerEvent('RS7x:Payout')
+              TriggerEvent('RS7x:robbingtimer')             --using citizen wait/ wait will jammed the script hence it wouldnt detect if player is dead during robbery thts why im using timer
+          end
+        end
 
-                if finished then
-                    SetPedAsNoLongerNeeded(guard)
-                    SetPedAsNoLongerNeeded(guard2)
-                    SetPedAsNoLongerNeeded(guard3)
-                    pedSpawned = false
-                    isRobbing = false
-                    RemoveBlip(Blip)
-                    finished = false
-                    RobbedPlates[Plate] = true
-                    TriggerServerEvent('RS7x:UpdatePlates', RobbedPlates, Plate)
-                    TriggerServerEvent('RS7x:moneytruck_false')                   -- reset server side
-                    TriggerServerEvent('RS7x:robbing_false')                      -- to stop payout event in server.lua when finished
-                    Timeout(true)
-                end
-            end
-        else
+        if finished then
+            SetPedAsNoLongerNeeded(guard)
+            SetPedAsNoLongerNeeded(guard2)
+            SetPedAsNoLongerNeeded(guard3)
+            pedSpawned = false
+            isRobbing = false
             RemoveBlip(Blip)
             finished = false
-            isRobbing = false
-            pedSpawned = false
-            TriggerServerEvent('RS7x:moneytruck_false')                           -- reset server side
-            TriggerServerEvent('RS7x:robbing_false')                              -- to stop payout event in server.lua when dead
-            Citizen.Wait(Config.Timeout * 1000)
+            RobbedPlates[Plate] = true
+--            TriggerServerEvent('RS7x:UpdatePlates', RobbedPlates, Plate)
+            TriggerServerEvent('RS7x:moneytruck_false')                   -- reset server side
+            TriggerServerEvent('RS7x:robbing_false')                      -- to stop payout event in server.lua when finished
+            Timeout(true)
         end
+    end
+        
+    if IsEntityDead(GetPlayerPed(-1)) and isRobbing then        -- moved here to avoid script jammed when player is alive
+        RemoveBlip(Blip)
+        finished = false
+        isRobbing = false
+        pedSpawned = false
+        TriggerServerEvent('RS7x:moneytruck_false')                           -- reset server side
+        TriggerServerEvent('RS7x:robbing_false')                              -- to stop payout event in server.lua when dead
+        Citizen.Wait(Config.Timeout * 1000)
+    end
+
   end
 end)
 
